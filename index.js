@@ -25,6 +25,8 @@ async function run() {
   try {
 
     const userCollection = client.db("VitalMeds").collection("Users");
+    const medicineCollection = client.db("VitalMeds").collection("medicines");
+    const cartCollection = client.db("VitalMeds").collection("carts");
 
     // verify token middleware 
     const verifyToken = (req, res, next) => {
@@ -68,7 +70,7 @@ async function run() {
     // users related api 
 
     app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
-      console.log(req.headers.authorization);
+      // console.log(req.headers.authorization);
       const result = await userCollection.find().toArray()
       res.send(result)
     })
@@ -90,6 +92,83 @@ async function run() {
       const result = await userCollection.insertOne(user)
       res.send(result)
     })
+
+    // admin 
+    app.get('/users/admin/:email', verifyToken, async(req, res) => {
+      const email = req.params.email;
+      if(email !== req.decoded.email){
+       return res.status(403).send({message: 'forbidden access'})
+      }  
+      const query = {email : email}
+      const user = await userCollection.findOne(query)
+      
+      let isAdmin = false;
+      if(user){
+        isAdmin = user?.role ===  "admin";
+      }
+      res.send(isAdmin)
+    })
+
+    app.patch('/users', async(req, res) => {
+      const user = req.body;
+      const id = user._id;
+      const filter = {_id : new ObjectId(id)}
+      console.log("user", user);
+      const updatedDoc = {
+        $set: {
+          role : user.toRole
+        }
+      }
+      const result = await userCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
+    // seller 
+    app.get('/users/seller/:email', verifyToken, async(req, res) => {
+      const email = req.params.email;
+      if(email !== req.decoded.email){
+        res.status(403).send({message: 'forbidden access'})
+      }
+
+      const query = {email: email}
+      const user = await userCollection.findOne(query)
+      let isSeller = false;
+
+      if(user){
+        isSeller= user?.role ===  "seller";
+      }
+
+      res.send(isSeller)
+    })
+
+
+    // medicines related api
+
+    app.get('/medicines', async(req, res) => {
+  
+      const result = await medicineCollection.find().toArray();
+      res.send(result)
+   })
+
+    app.post('/medicines', async(req, res) => {
+       const medicine = req.body;
+       const result = await medicineCollection.insertOne(medicine)
+       res.send(result)
+    })
+
+    app.get('/medicines/:email', async(req, res) => {
+      const email = req.query.email;
+      const query = {email: email}
+
+      const result = await medicineCollection.find(query).toArray();
+      res.send(result)
+   })
+
+
+
+
+    
+
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
