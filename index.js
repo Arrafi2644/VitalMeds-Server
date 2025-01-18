@@ -164,7 +164,13 @@ async function run() {
       res.send(result)
    })
 
+  //  Cart related api 
 
+    app.post('/carts', async(req, res) => {
+      const medicine = req.body;
+      const result = await cartCollection.insertOne(medicine)
+      res.send(result)
+    })
 
 
     
