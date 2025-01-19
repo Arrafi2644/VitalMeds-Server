@@ -166,9 +166,17 @@ async function run() {
 
   //  Cart related api 
 
+    
     app.post('/carts', async(req, res) => {
       const medicine = req.body;
       const result = await cartCollection.insertOne(medicine)
+      res.send(result)
+    })
+
+    app.get('/carts/:email', async(req, res) => {
+      const email = req.params.email;
+      const query = {userEmail: email}
+      const result = await cartCollection.find(query).toArray()
       res.send(result)
     })
 
