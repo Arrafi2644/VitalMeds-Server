@@ -27,6 +27,7 @@ async function run() {
     const userCollection = client.db("VitalMeds").collection("Users");
     const medicineCollection = client.db("VitalMeds").collection("medicines");
     const cartCollection = client.db("VitalMeds").collection("carts");
+    const categoryCollection = client.db("VitalMeds").collection("categories");
 
     // verify token middleware 
     const verifyToken = (req, res, next) => {
@@ -180,7 +181,17 @@ async function run() {
       res.send(result)
     })
 
+    // Category related api
+    app.get('/categories', async(req, res) => {
+      const result = await categoryCollection.find().toArray()
+      res.send(result)
+    })
 
+    app.post('/categories', async(req, res) => {
+      const category = req.body;
+      const result = await categoryCollection.insertOne(category)
+      res.send(result)
+    })
     
 
 
