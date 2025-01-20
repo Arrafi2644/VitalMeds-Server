@@ -192,8 +192,15 @@ async function run() {
       const result = await categoryCollection.insertOne(category)
       res.send(result)
     })
-    
 
+    app.delete('/categories/:id', async(req, res) => {
+      const id = req.params.id;
+      console.log("delet id", id);
+      const query = {_id: new ObjectId(id)}
+      const result = await categoryCollection.deleteOne(query)
+      res.send(result)
+    })
+    
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
