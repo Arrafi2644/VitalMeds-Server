@@ -174,6 +174,19 @@ async function run() {
    })
 
   //  advertisements related api 
+
+  app.get('/advertisements', async(req, res) => {
+    const result = await advertisementCollection.find().toArray();
+    res.send(result);
+  })
+
+  app.get('/advertisements/:email', async(req, res) => {
+    const email = req.params.email;
+    const query = {email: email}
+    const result = await advertisementCollection.find(query).toArray();
+    res.send(result);
+  })
+
   app.post('/advertisements', async(req, res) => {
     const advertise = req.body;
     const result = await advertisementCollection.insertOne(advertise)
