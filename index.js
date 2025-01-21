@@ -165,6 +165,13 @@ async function run() {
       res.send(result)
    })
 
+   app.delete('/medicines/:id', async(req, res)=>{
+    const id = req.params.id;
+    const query = {_id : new ObjectId(id)}
+    const result = await medicineCollection.deleteOne(query)
+    res.send(result)
+   })
+
   //  Cart related api 
 
     
@@ -186,6 +193,8 @@ async function run() {
       const result = await categoryCollection.find().toArray()
       res.send(result)
     })
+
+  
 
     app.post('/categories', async(req, res) => {
       const category = req.body;
