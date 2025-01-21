@@ -28,6 +28,7 @@ async function run() {
     const medicineCollection = client.db("VitalMeds").collection("medicines");
     const cartCollection = client.db("VitalMeds").collection("carts");
     const categoryCollection = client.db("VitalMeds").collection("categories");
+    const advertisementCollection = client.db("VitalMeds").collection("advertisements");
 
     // verify token middleware 
     const verifyToken = (req, res, next) => {
@@ -172,6 +173,13 @@ async function run() {
     res.send(result)
    })
 
+  //  advertisements related api 
+  app.post('/advertisements', async(req, res) => {
+    const advertise = req.body;
+    const result = await advertisementCollection.insertOne(advertise)
+    res.send(result);
+  })
+
   //  Cart related api 
 
     
@@ -193,8 +201,6 @@ async function run() {
       const result = await categoryCollection.find().toArray()
       res.send(result)
     })
-
-  
 
     app.post('/categories', async(req, res) => {
       const category = req.body;
