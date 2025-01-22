@@ -29,6 +29,7 @@ async function run() {
     const cartCollection = client.db("VitalMeds").collection("carts");
     const categoryCollection = client.db("VitalMeds").collection("categories");
     const advertisementCollection = client.db("VitalMeds").collection("advertisements");
+    const postedAdvertiseCollection = client.db("VitalMeds").collection("postedAdvertises");
 
     // verify token middleware 
     const verifyToken = (req, res, next) => {
@@ -193,9 +194,45 @@ async function run() {
     res.send(result);
   })
 
+  app.patch('/advertisements', async(req, res) => {
+    const advertise = req.body;
+    const id = advertise._id;
+    const filter = {_id : new ObjectId(id)}
+    console.log("Advertise ", advertise);
+    const updatedDoc = {
+      $set: {
+        status : advertise.changeStatus
+      }
+    }
+    const result = await advertisementCollection.updateOne(filter, updatedDoc)
+    res.send(result)
+
+  })
+
+
+  // posted advertisements 
+
+  app.get('/postedAdvertisements', async(req, res) => {
+    const result = await postedAdvertiseCollection.find().toArray()
+    res.send(result)
+  })
+
+  app.post('/postedAdvertisements', async(req, res) => {
+    const advertise = req.body;
+    const result = await postedAdvertiseCollection.insertOne(advertise);
+    res.send(result)
+  });
+
+  app.delete('/postedAdvertisements/:id', async(req, res) => {
+    const id = req.params.id;
+    // console.log(id);
+    const query = {_id : id}
+    const result = await postedAdvertiseCollection.deleteOne(query)
+    res.send(result)
+  })
+
   //  Cart related api 
 
-    
     app.post('/carts', async(req, res) => {
       const medicine = req.body;
       const result = await cartCollection.insertOne(medicine)
