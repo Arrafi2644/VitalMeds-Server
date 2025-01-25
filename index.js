@@ -248,6 +248,32 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/carts/totalPrice/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+    
+        // Directly use aggregate on the collection
+        const result = await cartCollection.aggregate([
+          {
+            $match: query // Ensure you're only working with the user's cart items
+          },
+          {
+            $project: {
+              totalPrice: { $multiply: ["$price", "$quantity"] } // Calculate total price for each product
+            }
+          },
+          {
+            $group: {
+              _id: null, // Group all documents together
+              grandTotal: { $sum: "$totalPrice" } // Sum all totalPrice values
+            }
+          }
+        ]).toArray();
+        
+        res.send(result)
+      
+    });
+
     app.delete('/carts/:id', async(req, res) => {
       const id = req.params.id;
       console.log("cart delete id ", id);
@@ -268,6 +294,36 @@ async function run() {
       const result = await cartCollection.deleteMany(query)
       res.send(result)
     })
+
+    app.patch('/carts/increment/:id', async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $inc: {
+          quantity: 1
+        }
+      }
+
+      const result = await cartCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+
+    })
+
+    app.patch('/carts/decrement/:id', async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $inc: {
+          quantity: -1
+        }
+      }
+
+      const result = await cartCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+
+    })
+
+
 
     // Category related api
     app.get('/categories', async(req, res) => {
