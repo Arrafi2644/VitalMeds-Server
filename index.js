@@ -248,6 +248,27 @@ async function run() {
       res.send(result)
     })
 
+    app.delete('/carts/:id', async(req, res) => {
+      const id = req.params.id;
+      console.log("cart delete id ", id);
+      const query = {_id : new ObjectId(id)}
+      const result = await cartCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    app.delete('/carts/clearAll/:email', async(req, res) => {
+      const email = req.params.email;
+      console.log("delete all cart for ", email);
+      const query = {
+        userEmail: {
+           $regex: email
+        }
+      }
+
+      const result = await cartCollection.deleteMany(query)
+      res.send(result)
+    })
+
     // Category related api
     app.get('/categories', async(req, res) => {
       const result = await categoryCollection.find().toArray()
