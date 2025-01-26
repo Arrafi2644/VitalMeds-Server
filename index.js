@@ -53,12 +53,12 @@ async function run() {
     }
 
     // verify admin 
-    const verifyAdmin = async(req, res, next) => {
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = {email : email}
+      const query = { email: email }
       const user = await userCollection.findOne(query)
-      if(user.role !== 'admin'){
-        return res.status(403).send({message: "forbidden access"})
+      if (user.role !== 'admin') {
+        return res.status(403).send({ message: "forbidden access" })
       }
       next()
     }
@@ -97,29 +97,29 @@ async function run() {
     })
 
     // admin 
-    app.get('/users/admin/:email', verifyToken, async(req, res) => {
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      if(email !== req.decoded.email){
-       return res.status(403).send({message: 'forbidden access'})
-      }  
-      const query = {email : email}
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const query = { email: email }
       const user = await userCollection.findOne(query)
-      
+
       let isAdmin = false;
-      if(user){
-        isAdmin = user?.role ===  "admin";
+      if (user) {
+        isAdmin = user?.role === "admin";
       }
       res.send(isAdmin)
     })
 
-    app.patch('/users', async(req, res) => {
+    app.patch('/users', async (req, res) => {
       const user = req.body;
       const id = user._id;
-      const filter = {_id : new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       console.log("user", user);
       const updatedDoc = {
         $set: {
-          role : user.toRole
+          role: user.toRole
         }
       }
       const result = await userCollection.updateOne(filter, updatedDoc)
@@ -127,18 +127,18 @@ async function run() {
     })
 
     // seller 
-    app.get('/users/seller/:email', verifyToken, async(req, res) => {
+    app.get('/users/seller/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      if(email !== req.decoded.email){
-        res.status(403).send({message: 'forbidden access'})
+      if (email !== req.decoded.email) {
+        res.status(403).send({ message: 'forbidden access' })
       }
 
-      const query = {email: email}
+      const query = { email: email }
       const user = await userCollection.findOne(query)
       let isSeller = false;
 
-      if(user){
-        isSeller= user?.role ===  "seller";
+      if (user) {
+        isSeller = user?.role === "seller";
       }
 
       res.send(isSeller)
@@ -147,103 +147,128 @@ async function run() {
 
     // medicines related api
 
-    app.get('/medicines', async(req, res) => {
-  
+    app.get('/medicines', async (req, res) => {
+
       const result = await medicineCollection.find().toArray();
       res.send(result)
-   })
-
-    app.post('/medicines', async(req, res) => {
-       const medicine = req.body;
-       const result = await medicineCollection.insertOne(medicine)
-       res.send(result)
     })
 
-    app.get('/medicines/:email', async(req, res) => {
+    app.post('/medicines', async (req, res) => {
+      const medicine = req.body;
+      const result = await medicineCollection.insertOne(medicine)
+      res.send(result)
+    })
+
+    app.get('/medicines/:email', async (req, res) => {
       const email = req.query.email;
-      const query = {email: email}
+      const query = { email: email }
 
       const result = await medicineCollection.find(query).toArray();
       res.send(result)
-   })
+    })
 
-   app.delete('/medicines/:id', async(req, res)=>{
-    const id = req.params.id;
-    const query = {_id : new ObjectId(id)}
-    const result = await medicineCollection.deleteOne(query)
-    res.send(result)
-   })
+    app.delete('/medicines/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await medicineCollection.deleteOne(query)
+      res.send(result)
+    })
 
-  //  advertisements related api 
+    //  advertisements related api 
 
-  app.get('/advertisements', async(req, res) => {
-    const result = await advertisementCollection.find().toArray();
-    res.send(result);
-  })
+    app.get('/advertisements', async (req, res) => {
+      const result = await advertisementCollection.find().toArray();
+      res.send(result);
+    })
 
-  app.get('/advertisements/:email', async(req, res) => {
-    const email = req.params.email;
-    const query = {email: email}
-    const result = await advertisementCollection.find(query).toArray();
-    res.send(result);
-  })
+    app.get('/advertisements/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email }
+      const result = await advertisementCollection.find(query).toArray();
+      res.send(result);
+    })
 
-  app.post('/advertisements', async(req, res) => {
-    const advertise = req.body;
-    const result = await advertisementCollection.insertOne(advertise)
-    res.send(result);
-  })
+    app.post('/advertisements', async (req, res) => {
+      const advertise = req.body;
+      const result = await advertisementCollection.insertOne(advertise)
+      res.send(result);
+    })
 
-  app.patch('/advertisements', async(req, res) => {
-    const advertise = req.body;
-    const id = advertise.advertiseId;
-    console.log(id);
-    const filter = {_id : new ObjectId(id)}
-    console.log("Advertise ", advertise);
-    const updatedDoc = {
-      $set: {
-        status : advertise.changeStatus
+    app.patch('/advertisements', async (req, res) => {
+      const advertise = req.body;
+      const id = advertise.advertiseId;
+      console.log(id);
+      const filter = { _id: new ObjectId(id) }
+      console.log("Advertise ", advertise);
+      const updatedDoc = {
+        $set: {
+          status: advertise.changeStatus
+        }
       }
-    }
-    const result = await advertisementCollection.updateOne(filter, updatedDoc)
-    res.send(result)
+      const result = await advertisementCollection.updateOne(filter, updatedDoc)
+      res.send(result)
 
-  })
+    })
+
+    app.patch(`/advertisements/:id`, async(req, res) => {
+      const advertiseInfo = req.body;
+      console.log(advertiseInfo);
+
+      const id = advertiseInfo._id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          isActivated: advertiseInfo.isActivated,
+        }
+      }
+      const result = await advertisementCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+
+    })
+
+    app.delete('/advertisements/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log("delete id ", id);
+      const query = { _id: new ObjectId(id) }
+      console.log(query);
+      const result = await advertisementCollection.deleteOne(query)
+      res.send(result)
+    })
 
 
-  // posted advertisements 
+    // posted advertisements 
 
-  app.get('/postedAdvertisements', async(req, res) => {
-    const result = await postedAdvertiseCollection.find().toArray()
-    res.send(result)
-  })
+    app.get('/postedAdvertisements', async (req, res) => {
+      const result = await postedAdvertiseCollection.find().toArray()
+      res.send(result)
+    })
 
-  app.post('/postedAdvertisements', async(req, res) => {
-    const advertise = req.body;
-    const result = await postedAdvertiseCollection.insertOne(advertise);
-    res.send(result)
-  });
+    app.post('/postedAdvertisements', async (req, res) => {
+      const advertise = req.body;
+      const result = await postedAdvertiseCollection.insertOne(advertise);
+      res.send(result)
+    });
 
-  app.delete('/postedAdvertisements/:id', async(req, res) => {
-    const id = req.params.id;
-    console.log("delete id ", id);
-    const query = {advertiseId: id}
-    console.log(query);
-    const result = await postedAdvertiseCollection.deleteOne(query)
-    res.send(result)
-  })
+    app.delete('/postedAdvertisements/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log("delete id ", id);
+      const query = { advertiseId: id }
+      console.log(query);
+      const result = await postedAdvertiseCollection.deleteOne(query)
+      res.send(result)
+    })
 
-  //  Cart related api 
+    //  Cart related api 
 
-    app.post('/carts', async(req, res) => {
+    app.post('/carts', async (req, res) => {
       const medicine = req.body;
       const result = await cartCollection.insertOne(medicine)
       res.send(result)
     })
 
-    app.get('/carts/:email', async(req, res) => {
+    app.get('/carts/:email', async (req, res) => {
       const email = req.params.email;
-      const query = {userEmail: email}
+      const query = { userEmail: email }
       const result = await cartCollection.find(query).toArray()
       res.send(result)
     })
@@ -251,43 +276,44 @@ async function run() {
     app.get('/carts/totalPrice/:email', async (req, res) => {
       const email = req.params.email;
       const query = { userEmail: email };
-    
-        // Directly use aggregate on the collection
-        const result = await cartCollection.aggregate([
-          {
-            $match: query // Ensure you're only working with the user's cart items
-          },
-          {
-            $project: {
-              totalPrice: { $multiply: ["$price", "$quantity"] } // Calculate total price for each product
-            }
-          },
-          {
-            $group: {
-              _id: null, // Group all documents together
-              grandTotal: { $sum: "$totalPrice" } // Sum all totalPrice values
-            }
+
+      // Directly use aggregate on the collection
+      const result = await cartCollection.aggregate([
+        {
+          $match: query // Ensure you're only working with the user's cart items
+        },
+        {
+          $project: {
+            totalPrice: { $multiply: ["$price", "$quantity"] } // Calculate total price for each product
           }
-        ]).toArray();
-        
-        res.send(result)
-      
+        },
+        {
+          $group: {
+            _id: null, // Group all documents together
+            grandTotal: { $sum: "$totalPrice" } // Sum all totalPrice values
+          }
+        }
+      ]).toArray();
+
+      res.send(result)
+
+
     });
 
-    app.delete('/carts/:id', async(req, res) => {
+    app.delete('/carts/:id', async (req, res) => {
       const id = req.params.id;
       console.log("cart delete id ", id);
-      const query = {_id : new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await cartCollection.deleteOne(query)
       res.send(result)
     })
 
-    app.delete('/carts/clearAll/:email', async(req, res) => {
+    app.delete('/carts/clearAll/:email', async (req, res) => {
       const email = req.params.email;
       console.log("delete all cart for ", email);
       const query = {
         userEmail: {
-           $regex: email
+          $regex: email
         }
       }
 
@@ -295,9 +321,9 @@ async function run() {
       res.send(result)
     })
 
-    app.patch('/carts/increment/:id', async(req, res) => {
+    app.patch('/carts/increment/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $inc: {
           quantity: 1
@@ -309,9 +335,9 @@ async function run() {
 
     })
 
-    app.patch('/carts/decrement/:id', async(req, res) => {
+    app.patch('/carts/decrement/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $inc: {
           quantity: -1
@@ -326,25 +352,25 @@ async function run() {
 
 
     // Category related api
-    app.get('/categories', async(req, res) => {
+    app.get('/categories', async (req, res) => {
       const result = await categoryCollection.find().toArray()
       res.send(result)
     })
 
-    app.post('/categories', async(req, res) => {
+    app.post('/categories', async (req, res) => {
       const category = req.body;
       const result = await categoryCollection.insertOne(category)
       res.send(result)
     })
 
-    app.delete('/categories/:id', async(req, res) => {
+    app.delete('/categories/:id', async (req, res) => {
       const id = req.params.id;
       console.log("delet id", id);
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await categoryCollection.deleteOne(query)
       res.send(result)
     })
-    
+
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
