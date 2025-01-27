@@ -392,14 +392,14 @@ async function run() {
           })
         });
 
-        // app.get('/payments/:email', verifyToken, async (req, res) => {
-        //   const query = { email: req.params.email }
-        //   if (req.params.email !== req.decoded.email) {
-        //     return res.status(403).send({ message: 'forbidden access' });
-        //   }
-        //   const result = await paymentCollection.find(query).toArray();
-        //   res.send(result);
-        // })
+        app.get('/payments/:email', verifyToken, async (req, res) => {
+          const query = { email: req.params.email }
+          if (req.params.email !== req.decoded.email) {
+            return res.status(403).send({ message: 'forbidden access' });
+          }
+          const result = await paymentCollection.find(query).toArray();
+          res.send(result);
+        })
 
         app.post('/payments', async (req, res) => {
           const payment = req.body;
@@ -416,6 +416,19 @@ async function run() {
           const deleteResult = await cartCollection.deleteMany(query);
     
           res.send({ paymentResult, deleteResult });
+        })
+
+        app.patch('/payments/:id', async(req, res) => {
+          const id = req.params.id;
+          const filter = {_id: new ObjectId(id)}
+          const updatedDoc = {
+            $set: {
+              status: "paid"
+            }
+          }
+
+          const result = await paymentCollection.updateOne(filter, updatedDoc)
+          res.send(result)
         })
 
     // Connect the client to the server	(optional starting in v4.7)
