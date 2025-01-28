@@ -280,20 +280,19 @@ async function run() {
       const email = req.params.email;
       const query = { userEmail: email };
 
-      // Directly use aggregate on the collection
       const result = await cartCollection.aggregate([
         {
-          $match: query // Ensure you're only working with the user's cart items
+          $match: query
         },
         {
           $project: {
-            totalPrice: { $multiply: ["$price", "$quantity"] } // Calculate total price for each product
+            totalPrice: { $multiply: ["$price", "$quantity"] } 
           }
         },
         {
           $group: {
-            _id: null, // Group all documents together
-            grandTotal: { $sum: "$totalPrice" } // Sum all totalPrice values
+            _id: null, 
+            grandTotal: { $sum: "$totalPrice" } 
           }
         }
       ]).toArray();
@@ -366,7 +365,7 @@ async function run() {
 
     app.delete('/categories/:id', async (req, res) => {
       const id = req.params.id;
-      console.log("delet id", id);
+      console.log("delete id", id);
       const query = { _id: new ObjectId(id) }
       const result = await categoryCollection.deleteOne(query)
       res.send(result)
@@ -437,6 +436,24 @@ async function run() {
           const result = await paymentCollection.updateOne(filter, updatedDoc)
           res.send(result)
         })
+
+        app.get('/payments/adminHome/:email', verifyToken, verifyAdmin, async(req, res) => {
+          const result = await paymentCollection.aggregate([
+            {
+              $group: {
+                _id: "$status",
+                totalPrice: {
+                  $sum : "$price"
+                }
+            }
+          }
+          ]).toArray()
+
+
+          res.send(result)
+
+        })
+
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
