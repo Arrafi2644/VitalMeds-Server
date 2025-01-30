@@ -33,6 +33,7 @@ async function run() {
     const advertisementCollection = client.db("VitalMeds").collection("advertisements");
     const postedAdvertiseCollection = client.db("VitalMeds").collection("postedAdvertises");
     const paymentCollection = client.db("VitalMeds").collection("payments");
+    const salesCollection = client.db("VitalMeds").collection("sales");
 
     // verify token middleware 
     const verifyToken = (req, res, next) => {
@@ -129,7 +130,7 @@ async function run() {
       res.send(result)
     })
 
-    // seller 
+    // is seller 
     app.get('/users/seller/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
@@ -163,8 +164,10 @@ async function run() {
     })
 
     app.get('/medicines/:email', async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email }
+      const email = req.params.email;
+      // console.log("email is ", email);
+      const query = { sellerEmail: email }
+      // console.log(query);
 
       const result = await medicineCollection.find(query).toArray();
       res.send(result)
@@ -213,7 +216,7 @@ async function run() {
 
     })
 
-    app.patch(`/advertisements/:id`, async(req, res) => {
+    app.patch(`/advertisements/:id`, async (req, res) => {
       const advertiseInfo = req.body;
       console.log(advertiseInfo);
 
@@ -286,20 +289,18 @@ async function run() {
         },
         {
           $project: {
-            totalPrice: { $multiply: ["$price", "$quantity"] } 
+            totalPrice: { $multiply: ["$price", "$quantity"] }
           }
         },
         {
           $group: {
-            _id: null, 
-            grandTotal: { $sum: "$totalPrice" } 
+            _id: null,
+            grandTotal: { $sum: "$totalPrice" }
           }
         }
       ]).toArray();
 
       res.send(result)
-
-
     });
 
     app.delete('/carts/:id', async (req, res) => {
@@ -372,87 +373,191 @@ async function run() {
     })
 
 
-        // payment intent
-        app.post('/create-payment-intent', async (req, res) => {
-          const { price } = req.body;
-          const amount = parseInt(price * 100);
-          console.log(amount, 'amount inside the intent')
-    
-          const paymentIntent = await stripe.paymentIntents.create({
-            amount: amount,
-            currency: 'usd',
-            payment_method_types: ['card']
-          });
+    // payment intent
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, 'amount inside the intent')
 
-          console.log("Payment intent is ", paymentIntent);
-    
-          res.send({
-            clientSecret: paymentIntent.client_secret
-          })
-        });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
 
-        // payments related api 
+      console.log("Payment intent is ", paymentIntent);
 
-        app.get('/payments/admin/:email', verifyToken, verifyAdmin, async(req, res)=> {
-          const result = await paymentCollection.find().toArray();
-          res.send(result);
-        })
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    });
 
-        app.get('/payments/:email', verifyToken, async (req, res) => {
-          const query = { email: req.params.email }
-          if (req.params.email !== req.decoded.email) {
-            return res.status(403).send({ message: 'forbidden access' });
-          }
-          const result = await paymentCollection.find(query).toArray();
-          res.send(result);
-        })
+    // payments related api 
 
-        app.post('/payments', async (req, res) => {
-          const payment = req.body;
-          const paymentResult = await paymentCollection.insertOne(payment);
-    
-          //  carefully delete each item from the cart
-          console.log('payment info', payment);
-          const query = {
-            _id: {
-              $in: payment.cartIds.map(id => new ObjectId(id))
+    app.get('/payments/admin/:email', verifyToken, verifyAdmin, async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    })
+
+    app.get('/payments/:email', verifyToken, async (req, res) => {
+      const query = { email: req.params.email }
+      if (req.params.email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    })
+
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+
+      //  carefully delete each item from the cart
+      console.log('payment info', payment);
+      const query = {
+        _id: {
+          $in: payment.cartIds.map(id => new ObjectId(id))
+        }
+      };
+
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({ paymentResult, deleteResult });
+    })
+
+    app.patch('/payments/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          status: "paid"
+        }
+      }
+
+      const result = await paymentCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
+    app.get('/payments/adminHome/:email', verifyToken, verifyAdmin, async (req, res) => {
+      const result = await paymentCollection.aggregate([
+        {
+          $group: {
+            _id: "$status",
+            totalPrice: {
+              $sum: "$price"
             }
-          };
-    
-          const deleteResult = await cartCollection.deleteMany(query);
-    
-          res.send({ paymentResult, deleteResult });
-        })
-
-        app.patch('/payments/:id', async(req, res) => {
-          const id = req.params.id;
-          const filter = {_id: new ObjectId(id)}
-          const updatedDoc = {
-            $set: {
-              status: "paid"
-            }
           }
+        }
+      ]).toArray()
 
-          const result = await paymentCollection.updateOne(filter, updatedDoc)
-          res.send(result)
+
+      res.send(result)
+
+    })
+
+    // sellerPaymentHistory
+    app.get('/payments/seller/:email', verifyToken, async (req, res) => {
+      const query = {"products.sellerEmail": req.params.email }
+      if (req.params.email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    })
+
+  
+    // sales api 
+    app.get('/sales/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { sellerEmail: email }
+      const result = await salesCollection.find(query).toArray()
+      res.send(result)
         })
 
-        app.get('/payments/adminHome/:email', verifyToken, verifyAdmin, async(req, res) => {
-          const result = await paymentCollection.aggregate([
+    app.post('/sales', async (req, res) => {
+      const products = req.body;
+      const result = await salesCollection.insertMany(products)
+      res.send(result)
+    })
+
+    //seller total sales api 
+
+    app.get('/payments/totalSales/:email', async(req, res) => {
+      const email = req.params.email;
+      const query = { "products.sellerEmail": email };
+
+      const result = await cartCollection.aggregate([
+        {
+          $match: query
+        },
+        {
+          $project: {
+            totalPrice: { $multiply: ["$price", "$quantity"] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            grandTotal: { $sum: "$totalPrice" }
+          }
+        }
+      ]).toArray();
+
+      res.send(result)
+    })
+
+  
+  app.get('/payments/seller/summary/:email', verifyToken, async (req, res) => {
+    const sellerEmail = req.params.email;
+
+    // Check if the authenticated user is the same as the requested seller
+    if (sellerEmail !== req.decoded.email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+    }
+
+        const result = await paymentCollection.aggregate([
             {
-              $group: {
-                _id: "$status",
-                totalPrice: {
-                  $sum : "$price"
+                $unwind: "$products" // Flatten the products array
+            },
+            {
+                $match: { "products.sellerEmail": sellerEmail } // Filter by seller's email
+            },
+            {
+                $group: {
+                    _id: "$status", // Group by status (paid/pending)
+                    totalAmount: { $sum: { $multiply: ["$products.price", "$products.quantity"] } }
                 }
             }
-          }
-          ]).toArray()
+        ]).toArray();
+
+        // Format the response
+        const summary = {
+            totalPaid: 0,
+            totalPending: 0
+        };
+
+        result.forEach(entry => {
+            if (entry._id === "paid") {
+                summary.totalPaid = entry.totalAmount;
+            } else if (entry._id === "pending") {
+                summary.totalPending = entry.totalAmount;
+            }
+        });
+
+        res.send({ sellerEmail, ...summary });
+
+});
 
 
-          res.send(result)
+    app.get('/state', async(req, res) => {
+      const totalUser = await userCollection.estimatedDocumentCount();
+      const totalOrderDelivered = await paymentCollection.estimatedDocumentCount()
+      const totalMedicines = await medicineCollection.estimatedDocumentCount()
+     
 
-        })
+      res.send({totalUser, totalOrderDelivered, totalMedicines})
+    })
+
 
 
     // Connect the client to the server	(optional starting in v4.7)
