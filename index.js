@@ -467,6 +467,10 @@ async function run() {
 
   
     // sales api 
+    app.get('/sales', async(req, res) => {
+      const result = await salesCollection.find().toArray()
+      res.send(result)
+    })
     app.get('/sales/:email', async (req, res) => {
       const email = req.params.email;
       const query = { sellerEmail: email }
@@ -557,8 +561,6 @@ async function run() {
 
       res.send({totalUser, totalOrderDelivered, totalMedicines})
     })
-
-
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
