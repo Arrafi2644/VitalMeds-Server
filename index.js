@@ -152,10 +152,53 @@ async function run() {
     // medicines related api
 
     app.get('/medicines', async (req, res) => {
-
-      const result = await medicineCollection.find().toArray();
-      res.send(result)
-    })
+      const category = req.query.category || "";
+      const search = req.query.search || "";
+      const sort = req.query.sort || "";
+    
+      console.log("category", category);
+      console.log("sort", sort);
+      console.log("search", search);
+    
+      let query = {};
+    
+      const andConditions = [];
+    
+      // Search filter
+      if (search) {
+        andConditions.push({
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { genericName: { $regex: search, $options: "i" } },
+          ]
+        });
+      }
+    
+      // Category filter
+      if (category) {
+        andConditions.push({
+          category: { $regex: category, $options: "i" }
+        });
+      }
+    
+      // Build final query
+      if (andConditions.length > 0) {
+        query = { $and: andConditions };
+      }
+    
+      // Find and sort
+      let cursor = medicineCollection.find(query);
+    
+      if (sort === "asc") {
+        cursor = cursor.sort({ price: 1 });
+      } else if (sort === "desc") {
+        cursor = cursor.sort({ price: -1 });
+      }
+    
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    
 
     app.post('/medicines', async (req, res) => {
       const medicine = req.body;
