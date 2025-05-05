@@ -157,15 +157,15 @@ async function run() {
       const category = req.query.category || "";
       const search = req.query.search || "";
       const sort = req.query.sort || "";
-    
+
       console.log("category", category);
       console.log("sort", sort);
       console.log("search", search);
-    
+
       let query = {};
-    
+
       const andConditions = [];
-    
+
       // Search filter
       if (search) {
         andConditions.push({
@@ -175,32 +175,32 @@ async function run() {
           ]
         });
       }
-    
+
       // Category filter
       if (category) {
         andConditions.push({
           category: { $regex: category, $options: "i" }
         });
       }
-    
+
       // Build final query
       if (andConditions.length > 0) {
         query = { $and: andConditions };
       }
-    
+
       // Find and sort
       let cursor = medicineCollection.find(query);
-    
+
       if (sort === "asc") {
         cursor = cursor.sort({ price: 1 });
       } else if (sort === "desc") {
         cursor = cursor.sort({ price: -1 });
       }
-    
+
       const result = await cursor.toArray();
       res.send(result);
     });
-    
+
 
     app.post('/medicines', async (req, res) => {
       const medicine = req.body;
@@ -399,17 +399,42 @@ async function run() {
 
     // Order related Api 
 
-   app.get("/orders/:email", async(req, res) => {
-    const email = req.params.email;
-    const query = {"cart.userEmail": email}
-    const result = await orderCollection.find(query).toArray()
-    res.send(result)
-   })
-    app.post("/orders", async(req, res)=>{
+    app.get("/orders/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { "cart.userEmail": email }
+      const result = await orderCollection.find(query).toArray()
+      res.send(result)
+    })
+    app.post("/orders", async (req, res) => {
       const order = req.body;
       console.log("2025 order is ", order);
       const result = await orderCollection.insertOne(order)
       res.send(result)
+    })
+
+    // seller 
+    app.get('/orders/seller/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { "cart.sellerEmail": email };
+      const result = await orderCollection.find(query).toArray()
+      res.send(result)
+    })
+
+    // change order status 
+    app.patch('/orders/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedStatus = req.body;
+      console.log("updated status ", updatedStatus);
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          status: updatedStatus?.newStatus
+        }
+      }
+
+      const result = await orderCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+
     })
 
     // Category related api
@@ -517,7 +542,7 @@ async function run() {
 
     // sellerPaymentHistory
     app.get('/payments/seller/:email', verifyToken, async (req, res) => {
-      const query = {"products.sellerEmail": req.params.email }
+      const query = { "products.sellerEmail": req.params.email }
       if (req.params.email !== req.decoded.email) {
         return res.status(403).send({ message: 'forbidden access' });
       }
@@ -525,9 +550,9 @@ async function run() {
       res.send(result);
     })
 
-  
+
     // sales api 
-    app.get('/sales', async(req, res) => {
+    app.get('/sales', async (req, res) => {
       const result = await salesCollection.find().toArray()
       res.send(result)
     })
@@ -536,7 +561,7 @@ async function run() {
       const query = { sellerEmail: email }
       const result = await salesCollection.find(query).toArray()
       res.send(result)
-        })
+    })
 
     app.post('/sales', async (req, res) => {
       const products = req.body;
@@ -546,16 +571,16 @@ async function run() {
       if (Array.isArray(products)) {
         // Multiple products
         result = await salesCollection.insertMany(products);
-      } else{
+      } else {
         // Single product
         result = await salesCollection.insertOne(products);
       }
 
       res.send(result)
-  })
+    })
     //seller total sales api 
 
-    app.get('/payments/totalSales/:email', async(req, res) => {
+    app.get('/payments/totalSales/:email', async (req, res) => {
       const email = req.params.email;
       const query = { "products.sellerEmail": email };
 
@@ -579,65 +604,65 @@ async function run() {
       res.send(result)
     })
 
-  
-  app.get('/payments/seller/summary/:email', verifyToken, async (req, res) => {
-    const sellerEmail = req.params.email;
 
-    // Check if the authenticated user is the same as the requested seller
-    if (sellerEmail !== req.decoded.email) {
+    app.get('/payments/seller/summary/:email', verifyToken, async (req, res) => {
+      const sellerEmail = req.params.email;
+
+      // Check if the authenticated user is the same as the requested seller
+      if (sellerEmail !== req.decoded.email) {
         return res.status(403).send({ message: 'Forbidden access' });
-    }
+      }
 
-        const result = await paymentCollection.aggregate([
-            {
-                $unwind: "$products" // Flatten the products array
-            },
-            {
-                $match: { "products.sellerEmail": sellerEmail } // Filter by seller's email
-            },
-            {
-                $group: {
-                    _id: "$status", // Group by status (paid/pending)
-                    totalAmount: { $sum: { $multiply: ["$products.price", "$products.quantity"] } }
-                }
-            }
-        ]).toArray();
+      const result = await paymentCollection.aggregate([
+        {
+          $unwind: "$products" // Flatten the products array
+        },
+        {
+          $match: { "products.sellerEmail": sellerEmail } // Filter by seller's email
+        },
+        {
+          $group: {
+            _id: "$status", // Group by status (paid/pending)
+            totalAmount: { $sum: { $multiply: ["$products.price", "$products.quantity"] } }
+          }
+        }
+      ]).toArray();
 
-        // Format the response
-        const summary = {
-            totalPaid: 0,
-            totalPending: 0
-        };
+      // Format the response
+      const summary = {
+        totalPaid: 0,
+        totalPending: 0
+      };
 
-        result.forEach(entry => {
-            if (entry._id === "paid") {
-                summary.totalPaid = entry.totalAmount;
-            } else if (entry._id === "pending") {
-                summary.totalPending = entry.totalAmount;
-            }
-        });
+      result.forEach(entry => {
+        if (entry._id === "paid") {
+          summary.totalPaid = entry.totalAmount;
+        } else if (entry._id === "pending") {
+          summary.totalPending = entry.totalAmount;
+        }
+      });
 
-        res.send({ sellerEmail, ...summary });
+      res.send({ sellerEmail, ...summary });
 
-});
+    });
 
-// orders related api 
-app.get('/sales/myOrders/:email', async (req, res) => {
-  const email = req.params.email;
-  console.log("user email is ", email);
-  const query = { userEmail: email }
-  const result = await salesCollection.find(query).toArray()
-  res.send(result)
+    // orders related api 
+    app.get('/sales/myOrders/:email', async (req, res) => {
+      const email = req.params.email;
+      console.log("user email is ", email);
+      const query = { userEmail: email }
+      const result = await salesCollection.find(query).toArray()
+      res.send(result)
     })
 
 
-    app.get('/state', async(req, res) => {
+    app.get('/state', async (req, res) => {
       const totalUser = await userCollection.estimatedDocumentCount();
       const totalOrderDelivered = await paymentCollection.estimatedDocumentCount()
       const totalMedicines = await medicineCollection.estimatedDocumentCount()
-     
 
-      res.send({totalUser, totalOrderDelivered, totalMedicines})
+
+      res.send({ totalUser, totalOrderDelivered, totalMedicines })
     })
 
     // Connect the client to the server	(optional starting in v4.7)
