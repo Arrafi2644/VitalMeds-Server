@@ -34,6 +34,8 @@ async function run() {
     const postedAdvertiseCollection = client.db("VitalMeds").collection("postedAdvertises");
     const paymentCollection = client.db("VitalMeds").collection("payments");
     const salesCollection = client.db("VitalMeds").collection("sales");
+    const orderCollection = client.db("VitalMeds").collection("orders");
+
 
     // verify token middleware 
     const verifyToken = (req, res, next) => {
@@ -395,6 +397,21 @@ async function run() {
 
     })
 
+    // Order related Api 
+
+   app.get("/orders/:email", async(req, res) => {
+    const email = req.params.email;
+    const query = {"cart.userEmail": email}
+    const result = await orderCollection.find(query).toArray()
+    res.send(result)
+   })
+    app.post("/orders", async(req, res)=>{
+      const order = req.body;
+      console.log("2025 order is ", order);
+      const result = await orderCollection.insertOne(order)
+      res.send(result)
+    })
+
     // Category related api
     app.get('/categories', async (req, res) => {
       const result = await categoryCollection.find().toArray()
@@ -523,10 +540,19 @@ async function run() {
 
     app.post('/sales', async (req, res) => {
       const products = req.body;
-      const result = await salesCollection.insertMany(products)
-      res.send(result)
-    })
+      console.log("new order ", products);
+      let result;
 
+      if (Array.isArray(products)) {
+        // Multiple products
+        result = await salesCollection.insertMany(products);
+      } else{
+        // Single product
+        result = await salesCollection.insertOne(products);
+      }
+
+      res.send(result)
+  })
     //seller total sales api 
 
     app.get('/payments/totalSales/:email', async(req, res) => {
@@ -594,6 +620,15 @@ async function run() {
         res.send({ sellerEmail, ...summary });
 
 });
+
+// orders related api 
+app.get('/sales/myOrders/:email', async (req, res) => {
+  const email = req.params.email;
+  console.log("user email is ", email);
+  const query = { userEmail: email }
+  const result = await salesCollection.find(query).toArray()
+  res.send(result)
+    })
 
 
     app.get('/state', async(req, res) => {
